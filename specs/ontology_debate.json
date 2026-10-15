@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "name": "ontology",
+  "scope": "cross_vertical",
+  "materialization": {
+    "phase": 1,
+    "slice": "sales",
+    "shared_foundation": true
+  },
+  "paper": "Motger, Oriol, Marco, and Franch. Multi-Agent Debate Strategies: Survey, Taxonomy, and Challenges. arXiv:2607.26212v1.",
+  "participants": {
+    "model": {
+      "family": "open-weight",
+      "heterogeneity": "homogeneous",
+      "api": "openai-compatible",
+      "provider": null,
+      "model_id": null
+    },
+    "debaters": [
+      {
+        "id": "sales",
+        "background": "Orders, quotes, and the customer who placed them",
+        "stance": "A sale is a commitment to a customer. Booked value exists before an invoice. Quote-to-order is a sales fact."
+      },
+      {
+        "id": "finance",
+        "background": "Invoices, tax, credit, receivables, and legal-entity boundaries",
+        "stance": "External revenue exists when it is invoiced. Consignment, intercompany, and exempt jurisdictions are not the same as a taxed external sale. A balance is not a flow."
+      },
+      {
+        "id": "inventory",
+        "background": "On-hand stock, shipments, receipts, and consignment",
+        "stance": "Stock moves on shipment and receipt, not when an order is booked. Goods shipped on consignment and not yet invoiced are still inventory."
+      },
+      {
+        "id": "procurement",
+        "background": "Purchases, receipts, and the buying legal entity",
+        "stance": "A purchase belongs to the entity that buys. An intercompany sale has to match that purchase, and the buyer's side is not the seller's revenue."
+      },
+      {
+        "id": "production",
+        "background": "Completion, availability, and demand placed on the plant",
+        "stance": "A good is available when production completes it, not when sales promises it. Booked demand is not finished goods."
+      }
+    ],
+    "summarizer_id": "summarizer",
+    "judge_id": "judge",
+    "persona_heterogeneity": "heterogeneous",
+    "persona_assignment": "manual",
+    "persona_attributes": ["background", "stance"]
+  },
+  "interaction": {
+    "adaptability": "static",
+    "structure": "sparse",
+    "mechanism": "hybrid",
+    "syntax": "natural_language",
+    "memory": ["short-term", "retrieval"],
+    "rounds": 2,
+    "edges": [
+      {
+        "step": 1,
+        "src": ["sales", "finance", "inventory", "procurement", "production"],
+        "dst": ["judge", "summarizer"],
+        "content": "verbatim"
+      },
+      {
+        "step": 2,
+        "src": ["judge"],
+        "dst": ["sales", "finance", "inventory", "procurement", "production"],
+        "content": "verbatim"
+      },
+      {
+        "step": 2,
+        "src": ["sales", "finance", "inventory", "procurement", "production"],
+        "dst": ["judge"],
+        "content": "verbatim"
+      },
+      {
+        "step": 3,
+        "src": ["summarizer"],
+        "dst": ["judge"],
+        "content": "summarized"
+      }
+    ]
+  },
+  "agreement": {
+    "debate_authority": "judge",
+    "resolution": "argument_evaluation",
+    "preserve_cited_dissent": true
+  },
+  "promotion": {
+    "authority": "human",
+    "policy": "human_required"
+  },
+  "budgets": {
+    "max_seconds": 900,
+    "max_usd": 8
+  },
+  "gates": {
+    "exception_recall_min": 0.7,
+    "stability_runs": 3,
+    "stability_min": 0.75
+  }
+}
