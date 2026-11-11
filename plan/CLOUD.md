@@ -82,3 +82,30 @@ Development stays in Docker Compose. A larger machine is started for a public de
 - Traces are OTLP. The vendor APM is not in the dependency list.
 - Terraform is Phase 3 in the walkthrough. Phase 0 does not grow a cloud module before an account exists.
 - The model client is Phase 1. Its only cloud dependency is the secret.
+
+## Task P0-7 on Google Cloud
+
+The account is Google Cloud. The artifact store uses the existing S3 driver against the Cloud Storage XML endpoint with an HMAC key. No Azure driver is written.
+
+In the console, in the project:
+
+1. Cloud Storage: create one bucket, location type **Region**, `us-central1`, storage class Standard, uniform access, public access prevention on. Turn on **object versioning**.
+2. IAM: create a service account `esl-artifacts`. On the bucket only (not the project), grant it **Storage Object User**. It cannot create or list buckets, so the API never creates one on Cloud Storage.
+3. Cloud Storage, Settings, Interoperability: create an **HMAC key for that service account**. Copy the access key and secret once. Store them in a local `.env` or a password manager, never in the repository.
+4. Leave Secret Manager off. The model API key is Phase 1.
+
+Point the API at the bucket:
+
+```bash
+export ARTIFACT_BACKEND=s3
+export S3_ENDPOINT=https://storage.googleapis.com
+export S3_REGION=us-central1
+export S3_BUCKET=<bucket name>
+export S3_ACCESS_KEY=<HMAC access key>
+export S3_SECRET_KEY=<HMAC secret>
+.venv/bin/python -m esl.check_store
+```
+
+`ok: s3 store wrote and read s3://<bucket>/store_check/...` closes P0-7. `S3_CREATE_BUCKET=1` is set only in Compose, for MinIO.
+
+The driver sends checksums only when an operation requires them, because the Cloud Storage XML endpoint rejects the default checksum trailers newer botocore adds to uploads. A key that already exists is not rewritten, so versioning only records a new generation if an object is deliberately replaced.

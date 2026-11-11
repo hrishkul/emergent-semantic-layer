@@ -88,7 +88,7 @@ def build_store(settings: Settings) -> ArtifactStore:
             access_key=settings.s3_access_key,
             secret_key=settings.s3_secret_key,
         )
-        store.ensure_bucket()
+        store.ensure_bucket(create=settings.s3_create_bucket)
         return store
     raise ValueError(f"unknown artifact backend: {settings.artifact_backend}")
 

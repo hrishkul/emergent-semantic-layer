@@ -13,6 +13,7 @@ class Settings:
     s3_access_key: str = ""
     s3_secret_key: str = ""
     s3_region: str = "us-east-1"
+    s3_create_bucket: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -30,4 +31,5 @@ class Settings:
             s3_access_key=os.environ.get("S3_ACCESS_KEY", ""),
             s3_secret_key=os.environ.get("S3_SECRET_KEY", ""),
             s3_region=os.environ.get("S3_REGION", "us-east-1"),
+            s3_create_bucket=os.environ.get("S3_CREATE_BUCKET", "") == "1",
         )
