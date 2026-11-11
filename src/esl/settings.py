@@ -13,6 +13,9 @@ class Settings:
     s3_access_key: str = ""
     s3_secret_key: str = ""
     s3_region: str = "us-east-1"
+    llm_base_url: str = "https://integrate.api.nvidia.com/v1"
+    llm_model: str = "nvidia/nemotron-3-ultra-550b-a55b"
+    llm_api_key: str = ""
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -30,4 +33,7 @@ class Settings:
             s3_access_key=os.environ.get("S3_ACCESS_KEY", ""),
             s3_secret_key=os.environ.get("S3_SECRET_KEY", ""),
             s3_region=os.environ.get("S3_REGION", "us-east-1"),
+            llm_base_url=os.environ.get("LLM_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+            llm_model=os.environ.get("LLM_MODEL", "nvidia/nemotron-3-ultra-550b-a55b"),
+            llm_api_key=os.environ.get("NVIDIA_API_KEY", ""),
         )

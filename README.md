@@ -36,6 +36,10 @@ Compose (`compose.yaml`) adds MinIO and an OpenTelemetry collector for a later m
 .venv/bin/pytest
 ```
 
+## LLM calls
+
+`esl.llm.LLMClient` calls an OpenAI-compatible chat endpoint. The default is NVIDIA NIM (`https://integrate.api.nvidia.com/v1`) with `nvidia/nemotron-3-ultra-550b-a55b`. Override with `LLM_BASE_URL` and `LLM_MODEL`. The key is `NVIDIA_API_KEY`; never commit it. Without the variable the live test is skipped. The debate spec's `provider` and `model_id` slots stay empty until a reviewed spec version fills them.
+
 ## API
 
 `POST /artifacts` stores a version. `kind` is `source_extract`, `ontology`, `kpi_registry`, `cube_manifest`, `debate_transcript`, or `debate_spec`. A `debate_spec` must match the locked framework.
