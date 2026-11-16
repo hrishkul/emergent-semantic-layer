@@ -90,7 +90,7 @@ The account is Google Cloud. The artifact store uses the existing S3 driver agai
 In the console, in the project:
 
 1. Cloud Storage: create one bucket, location type **Region**, `us-central1`, storage class Standard, uniform access, public access prevention on. Turn on **object versioning**.
-2. IAM: create a service account `esl-artifacts`. On the bucket only (not the project), grant it **Storage Object User**. It cannot create or list buckets, so the API never creates one on Cloud Storage.
+2. IAM: use one service account for the artifact store (currently `agent-bucket-access`). On the bucket only (not the project), grant it **Storage Object User**. It cannot create or list buckets, so the API never creates one on Cloud Storage.
 3. Cloud Storage, Settings, Interoperability: create an **HMAC key for that service account**. Copy the access key and secret once. Store them in a local `.env` or a password manager, never in the repository.
 4. Leave Secret Manager off. The model API key is Phase 1.
 
