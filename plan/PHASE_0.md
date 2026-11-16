@@ -46,7 +46,7 @@ The source extract is an artifact of kind `source_extract` whose metadata names 
 | P0-6 | GitHub Actions: ruff, the migration applied to a Postgres service container, pytest. | No |
 | P0-7 | Point the S3 driver at the real bucket (AWS, or Cloud Storage HMAC). Azure Blob driver only if that is the account. Secret stays empty until Phase 1. | Yes |
 
-Each task is one commit. P0-2 through P0-6 have landed. P0-7 waits for the cloud account.
+Each task is one commit. All seven tasks have landed. P0-7 was verified on 16 November 2026: `esl.check_store` wrote and read an object in `gs://esl-bucket-01-enterprise` (Google Cloud, `us-central1`) with an HMAC key for the `agent-bucket-access` service account. Phase 0 is complete.
 
 ## Explicitly later
 

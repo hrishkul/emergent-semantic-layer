@@ -24,10 +24,15 @@ From a review of a graph-database design (documents into a graph ontology, a fun
 | Drift | Compiling from the ontology removes drift between Cube and the ontology only. Drift between Cube and the warehouse is a CI check. | dbt tests plus a check of the compiled manifest against DuckDB run in CI from Phase 1. |
 | Conversational BI | A question layer over the Cube API, after Superset. Phase 2b. | It only reaches approved measures. Every answer shows the resolved query (measures, dimensions, filters, time window) and the ontology version. |
 
+## Closed on 16 November 2026
+
+| Topic | Decision | Consequence for the build |
+| --- | --- | --- |
+| Cloud | Google Cloud, `us-central1`. | Artifacts live in `esl-bucket-01-enterprise` (regional, versioning on, public access prevented) through the S3 driver and the Cloud Storage XML endpoint. The `agent-bucket-access` service account holds Storage Object User on that bucket only, with an HMAC key kept outside the repository. Secret Manager stays off until the model key exists in Phase 1. |
+
 ## Still open, and when it gets closed
 
 | Topic | Closes in |
 | --- | --- |
 | Which model vendor and which model id | Phase 1, before the first debate. The framework spec already has an empty slot |
-| Which cloud account was opened | After Phase 0, when you confirm the vendor. Task P0-7 points the artifact store at that bucket |
 | Whether the demo VM is Google Compute Engine, an Azure VM, or EC2 | First time the demo is published. Local Compose is the development target until then |
