@@ -61,6 +61,10 @@ class S3Store:
             return
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code")
+            if code in {"403", "AccessDenied"} and not create:
+                # A key scoped to objects may not read bucket metadata. Object
+                # calls report a real permission problem.
+                return
             if code not in {"404", "NoSuchBucket", "NotFound"}:
                 raise
         if not create:
