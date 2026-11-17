@@ -10,7 +10,7 @@ Open **Google Cloud**, and put the project in `us-central1` (or `us-east1` / `us
 
 - New accounts get **$300** of welcome credit for **90 days**, and are not billed during the trial.
 - After the trial, an `e2-micro` (1 GB RAM), **5 GB** of regional Cloud Storage, and Secret Manager (6 active versions, 10,000 reads a month) stay inside the always-free monthly limits. That is the only one of the three that still has a free VM when the credits end.
-- The warehouse stays DuckDB. BigQuery is not part of this design, so choosing Google does not pull the project onto a different database.
+- The warehouse is BigQuery (revised 17 November 2026; see `plan/DECISIONS.md`). Its free tier covers this volume.
 
 **Azure** is the better signup if a managed Postgres for a year matters more than the leftover free VM. New accounts get **$200 for 30 days**, then, for 12 months: Flexible Server burstable B1MS for 750 hours a month (32 GB storage), 5 GB of hot LRS blob, and 750 hours each of the B1s, B2pts v2, and B2ats v2 VMs. Upgrade to pay-as-you-go before day 30, or the account is disabled and those 12-month allowances stop. Set a budget alert at the same time. The free VM sizes are **1 GB RAM**.
 
@@ -37,8 +37,9 @@ Turning them on spends the credit and forks the design.
 
 | Service | Why it stays off |
 | --- | --- |
-| Redshift, Synapse, BigQuery | The warehouse is a DuckDB file. The debate compiles dbt, it does not target a cloud warehouse. |
-| Bedrock, Azure OpenAI, Vertex AI | The debate model is an external OpenAI-compatible API, chosen for price. The cloud only stores the key. |
+| Cloud Composer | Managed Airflow bills a few hundred dollars a month idle. Dagster runs in Docker instead. |
+| Dataproc, Databricks | No Spark at this volume. |
+| Vertex AI | The debate model is an external OpenAI-compatible API, chosen for price. The cloud only stores the key. |
 | QuickSight, a Power BI tenant, Looker | Superset in Phase 2. Power BI, if used at all, connects to the same SQL API. |
 | NAT Gateway | About $32 a month on AWS before any data. Use a public subnet with a tight firewall, or stay on Compose. |
 | Cognito, Entra ID, Identity Platform | One named approver. An identity provider arrives when a second person approves. |
@@ -109,3 +110,11 @@ export S3_SECRET_KEY=<HMAC secret>
 `ok: s3 store wrote and read s3://<bucket>/store_check/...` closes P0-7. `S3_CREATE_BUCKET=1` is set only in Compose, for MinIO.
 
 The driver sends checksums only when an operation requires them, because the Cloud Storage XML endpoint rejects the default checksum trailers newer botocore adds to uploads. A key that already exists is not rewritten, so versioning only records a new generation if an object is deliberately replaced.
+
+## Milestone 1 on Google Cloud: BigQuery bronze
+
+1. Enable the **BigQuery API** in the project.
+2. On your Mac, log in for application default credentials: `gcloud auth application-default login`, then `gcloud config set project project-9a3d61d7-226e-4e0b-bad`. Your user account is a project owner, so it can create the `bronze_erp_mtdd` dataset and read the bucket for external tables. A dedicated pipeline service account replaces this in milestone 8, with Terraform.
+3. Optional safety net: in BigQuery, set a custom quota on query bytes per day.
+
+The pipeline writes Parquet through the S3 driver (HMAC key) and creates external tables through the BigQuery client (application default credentials).

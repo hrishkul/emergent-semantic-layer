@@ -2,16 +2,17 @@
 
 Agents propose an ontology, a KPI registry, and a Cube manifest. Deterministic pipelines compile those into a warehouse. A person approves every proposal until there is calibration data.
 
-Phase 0 is the control plane: a versioned artifact store, a review queue, tracing, and the debate specification. No debate is executed. No cloud account is required.
+Phase 0 built the control plane: a versioned artifact store, a review queue, tracing, and the debate specification. Phase 1 milestones are in [plan/PHASE_1.md](plan/PHASE_1.md).
 
 ## Decisions
 
 - The first pipeline is sales, plus shared foundation. The ontology debate seats every vertical on that run.
-- Data is the public Levantia ERP extract. An Epicor adapter comes later.
+- Data is the Kaggle ERP seed dataset (adapter `erp_mtdd`). An Epicor adapter comes later.
+- The platform is Google Cloud: BigQuery, dbt, Dagster, Cube, Superset, an MCP server, LangGraph agents, Langfuse, and Terraform. See [plan/DECISIONS.md](plan/DECISIONS.md).
 - BI is Apache Superset in Phase 2. The SQL API stays something Power BI can also connect to.
 - The debate framework is locked in [plan/DEBATE_FRAMEWORK.md](plan/DEBATE_FRAMEWORK.md), from the taxonomy in [arXiv:2607.26212](https://arxiv.org/html/2607.26212v1). The document is [specs/ontology_debate.json](specs/ontology_debate.json).
 - The model vendor is still open. One open-weight model behind an OpenAI-compatible API, chosen in Phase 1.
-- The cloud vendor is confirmed after Phase 0. The service map is [plan/CLOUD.md](plan/CLOUD.md).
+- The service map and console steps are in [plan/CLOUD.md](plan/CLOUD.md).
 
 The project license is the MIT license in the GitHub repository `hrishkul/emergent-semantic-layer`. That repository currently holds the license only.
 
