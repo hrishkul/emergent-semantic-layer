@@ -5,6 +5,8 @@ import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
+from esl.settings import Settings
+
 
 class ArtifactStore(Protocol):
     def put(self, key: str, data: bytes) -> str: ...
@@ -107,3 +109,19 @@ def _s3_parts(uri: str) -> tuple[str, str]:
     if not sep or not bucket or not key:
         raise ValueError(f"not an s3 artifact uri: {uri}")
     return bucket, key
+
+
+def build_store(settings: Settings) -> ArtifactStore:
+    if settings.artifact_backend == "dir":
+        return DirectoryStore(settings.artifact_dir)
+    if settings.artifact_backend == "s3":
+        store = S3Store(
+            bucket=settings.s3_bucket,
+            region=settings.s3_region,
+            endpoint_url=settings.s3_endpoint,
+            access_key=settings.s3_access_key,
+            secret_key=settings.s3_secret_key,
+        )
+        store.ensure_bucket(create=settings.s3_create_bucket)
+        return store
+    raise ValueError(f"unknown artifact backend: {settings.artifact_backend}")

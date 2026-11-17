@@ -37,9 +37,22 @@ Compose (`compose.yaml`) adds MinIO and an OpenTelemetry collector for a later m
 .venv/bin/pytest
 ```
 
+## Milestone 1: bronze pipeline
+
+The Dagster job `bronze_erp_mtdd` downloads the pinned Kaggle dataset, lands it under `bronze/erp_mtdd/<extract id>/` in the artifact store (raw workbooks, one Parquet file per table, documentation sheets, manifest), creates BigQuery external tables over the Parquet files, and profiles the extract against its documentation. Design: [plan/PHASE_1.md](plan/PHASE_1.md).
+
+```bash
+.venv/bin/pip install -e ".[dev,pipeline]"
+.venv/bin/python -m esl.pipeline
+```
+
+Without settings it writes to a local directory and skips BigQuery. Against Google Cloud, set the bucket variables from `plan/CLOUD.md`, plus `BQ_PROJECT`, after `gcloud auth application-default login`. With `ESL_API_URL` and `ESL_ACTOR`, the manifest and profile are submitted as `source_extract` and `source_profile` proposals. A rerun with the same data writes nothing and proposes nothing.
+
+`dagster dev -m esl.pipeline.definitions` opens the Dagster UI. Compose runs the same UI on port 3000.
+
 ## API
 
-`POST /artifacts` stores a version. `kind` is `source_extract`, `ontology`, `kpi_registry`, `cube_manifest`, `debate_transcript`, or `debate_spec`. A `debate_spec` must match the locked framework.
+`POST /artifacts` stores a version, or returns the latest version with `existing: true` and status 200 when the bytes are unchanged. `kind` is `source_extract`, `source_profile`, `ontology`, `kpi_registry`, `cube_manifest`, `debate_transcript`, or `debate_spec`. A `debate_spec` must match the locked framework.
 
 `POST /proposals` opens a review. The only policy is `human_required`.
 

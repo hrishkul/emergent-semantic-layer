@@ -8,8 +8,8 @@ import hashlib
 import sys
 from datetime import UTC, datetime
 
-from esl.app import build_store
 from esl.settings import Settings
+from esl.store import build_store
 
 
 def main() -> None:
