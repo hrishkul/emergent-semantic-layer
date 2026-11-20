@@ -46,7 +46,7 @@ The source extract is an artifact of kind `source_extract` whose metadata names 
 | P0-6 | GitHub Actions: ruff, the migration applied to a Postgres service container, pytest. | No |
 | P0-7 | Point the S3 driver at the real bucket (AWS, or Cloud Storage HMAC). Azure Blob driver only if that is the account. Secret stays empty until Phase 1. | Yes |
 
-Each task is one commit. P0-2 is the next one.
+Each task is one commit. All seven tasks have landed. P0-7 was verified on 16 November 2026: `esl.check_store` wrote and read an object in `gs://esl-bucket-01-enterprise` (Google Cloud, `us-central1`) with an HMAC key for the `agent-bucket-access` service account. Phase 0 is complete.
 
 ## Explicitly later
 
@@ -55,8 +55,11 @@ Each task is one commit. P0-2 is the next one.
 | Debate client, response cache, model vendor | 1 |
 | Levantia extract, planted exceptions, profiler, document index | 1 |
 | dbt on DuckDB, ontology tests, KPI reconciliation | 1 |
-| Cube manifest and the SQL API that refuses a bad aggregation | 1 |
+| Ontology artifact schema: nodes, edges, links to tables and documents | 1 |
+| Cube manifest compiler from approved ontology and KPI registry, and the SQL API that refuses a bad aggregation | 1 |
+| CI check of the compiled Cube manifest against DuckDB | 1 |
 | Grafana lineage view | 1 |
 | Superset | 2 |
 | Pipelines for finance, inventory, procurement, and production | 2 |
+| Question layer over the Cube API, showing the resolved query | 2b |
 | Terraform, Epicor adapter, row-level security | 3 |

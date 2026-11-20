@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY pyproject.toml README.md LICENSE ./
+COPY src ./src
+RUN pip install --no-cache-dir ".[pipeline]"
+
+ENV DAGSTER_HOME=/dagster
+RUN mkdir -p /dagster
+EXPOSE 3000
+CMD ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "esl.pipeline.definitions"]

@@ -22,11 +22,12 @@ from esl.repository import (
     list_proposals,
 )
 from esl.settings import Settings
-from esl.store import ArtifactStore, DirectoryStore, S3Store
+from esl.store import build_store
 from esl.telemetry import build_tracer
 
 Kind = Literal[
     "source_extract",
+    "source_profile",
     "ontology",
     "kpi_registry",
     "cube_manifest",
@@ -77,22 +78,6 @@ class DecisionBody(BaseModel):
     reason: str = Field(min_length=1)
 
 
-def build_store(settings: Settings) -> ArtifactStore:
-    if settings.artifact_backend == "dir":
-        return DirectoryStore(settings.artifact_dir)
-    if settings.artifact_backend == "s3":
-        store = S3Store(
-            bucket=settings.s3_bucket,
-            region=settings.s3_region,
-            endpoint_url=settings.s3_endpoint,
-            access_key=settings.s3_access_key,
-            secret_key=settings.s3_secret_key,
-        )
-        store.ensure_bucket()
-        return store
-    raise ValueError(f"unknown artifact backend: {settings.artifact_backend}")
-
-
 def create_app(
     settings: Settings | None = None,
     exporter: SpanExporter | None = None,
@@ -126,7 +111,9 @@ def create_app(
         return JSONResponse({"status": "ok"})
 
     @app.post("/artifacts", status_code=201)
-    def create_artifact(body: CreateArtifact, request: Request, conn=Depends(get_conn)):
+    def create_artifact(
+        body: CreateArtifact, request: Request, response: Response, conn=Depends(get_conn)
+    ):
         try:
             data = body.payload()
         except ValueError as exc:
@@ -152,7 +139,7 @@ def create_app(
             span.set_attribute("artifact.kind", body.kind)
             span.set_attribute("artifact.name", body.name)
             uri = request.app.state.store.put(key, data)
-            return insert_artifact(
+            row = insert_artifact(
                 conn,
                 kind=body.kind,
                 name=body.name,
@@ -160,6 +147,10 @@ def create_app(
                 content_uri=uri,
                 content_sha256=digest,
             )
+            span.set_attribute("artifact.existing", row["existing"])
+            if row["existing"]:
+                response.status_code = 200
+            return row
 
     @app.get("/artifacts/{artifact_id}")
     def read_artifact(artifact_id: UUID, conn=Depends(get_conn)):

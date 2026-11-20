@@ -3,6 +3,9 @@ from typing import Protocol
 
 import boto3
 from botocore.client import Config
+from botocore.exceptions import ClientError
+
+from esl.settings import Settings
 
 
 class ArtifactStore(Protocol):
@@ -37,24 +40,52 @@ class S3Store:
         access_key: str,
         secret_key: str,
     ) -> None:
+        # Checksums only when an operation requires them: the Cloud Storage XML
+        # endpoint rejects the default CRC trailers that newer botocore sends.
+        config = Config(
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
+        )
         kwargs: dict[str, object] = {"region_name": region}
         if endpoint_url:
             kwargs["endpoint_url"] = endpoint_url
-            kwargs["config"] = Config(s3={"addressing_style": "path"})
+            config = config.merge(Config(s3={"addressing_style": "path"}))
+        kwargs["config"] = config
         if access_key:
             kwargs["aws_access_key_id"] = access_key
             kwargs["aws_secret_access_key"] = secret_key
         self._client = boto3.client("s3", **kwargs)
         self._bucket = bucket
 
-    def ensure_bucket(self) -> None:
-        names = {item["Name"] for item in self._client.list_buckets().get("Buckets", [])}
-        if self._bucket not in names:
-            self._client.create_bucket(Bucket=self._bucket)
+    def ensure_bucket(self, *, create: bool) -> None:
+        try:
+            self._client.head_bucket(Bucket=self._bucket)
+            return
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code")
+            if code in {"403", "AccessDenied"} and not create:
+                # A key scoped to objects may not read bucket metadata. Object
+                # calls report a real permission problem.
+                return
+            if code not in {"404", "NoSuchBucket", "NotFound"}:
+                raise
+        if not create:
+            raise RuntimeError(f"artifact bucket does not exist: {self._bucket}")
+        self._client.create_bucket(Bucket=self._bucket)
 
     def put(self, key: str, data: bytes) -> str:
-        self._client.put_object(Bucket=self._bucket, Key=key, Body=data)
+        if not self._exists(key):
+            self._client.put_object(Bucket=self._bucket, Key=key, Body=data)
         return f"s3://{self._bucket}/{key}"
+
+    def _exists(self, key: str) -> bool:
+        try:
+            self._client.head_object(Bucket=self._bucket, Key=key)
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise
+        return True
 
     def get(self, uri: str) -> bytes:
         bucket, key = _s3_parts(uri)
@@ -78,3 +109,19 @@ def _s3_parts(uri: str) -> tuple[str, str]:
     if not sep or not bucket or not key:
         raise ValueError(f"not an s3 artifact uri: {uri}")
     return bucket, key
+
+
+def build_store(settings: Settings) -> ArtifactStore:
+    if settings.artifact_backend == "dir":
+        return DirectoryStore(settings.artifact_dir)
+    if settings.artifact_backend == "s3":
+        store = S3Store(
+            bucket=settings.s3_bucket,
+            region=settings.s3_region,
+            endpoint_url=settings.s3_endpoint,
+            access_key=settings.s3_access_key,
+            secret_key=settings.s3_secret_key,
+        )
+        store.ensure_bucket(create=settings.s3_create_bucket)
+        return store
+    raise ValueError(f"unknown artifact backend: {settings.artifact_backend}")

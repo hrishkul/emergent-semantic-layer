@@ -27,15 +27,21 @@ def insert_artifact(
     content_sha256: str,
 ) -> dict[str, Any]:
     conn.execute("SELECT pg_advisory_xact_lock(hashtext(%s)::bigint)", (f"{kind}:{name}",))
-    current = conn.execute(
+    latest = conn.execute(
         """
-        SELECT COALESCE(MAX(version), 0) AS version
+        SELECT id, kind, logical_name, version, content_uri, content_sha256,
+               created_at, created_by
         FROM artifacts
         WHERE kind = %s AND logical_name = %s
+        ORDER BY version DESC
+        LIMIT 1
         """,
         (kind, name),
     ).fetchone()
-    version = int(current["version"]) + 1
+    if latest is not None and latest["content_sha256"] == content_sha256:
+        # Same bytes as the latest version: not a new version.
+        return {**public_row(latest), "existing": True}
+    version = (int(latest["version"]) if latest else 0) + 1
     row = conn.execute(
         """
         INSERT INTO artifacts (
@@ -47,7 +53,7 @@ def insert_artifact(
         """,
         (uuid4(), kind, name, version, content_uri, content_sha256, created_by),
     ).fetchone()
-    return public_row(row)
+    return {**public_row(row), "existing": False}
 
 
 def get_artifact(conn: psycopg.Connection, artifact_id: UUID) -> dict[str, Any] | None:

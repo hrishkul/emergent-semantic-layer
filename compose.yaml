@@ -40,6 +40,7 @@ services:
       S3_ACCESS_KEY: minio
       S3_SECRET_KEY: minio-secret
       S3_REGION: us-east-1
+      S3_CREATE_BUCKET: "1"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
     ports:
       - "8091:8091"
@@ -48,3 +49,23 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+
+  dagster:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    environment:
+      ARTIFACT_BACKEND: s3
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: esl-artifacts
+      S3_ACCESS_KEY: minio
+      S3_SECRET_KEY: minio-secret
+      S3_REGION: us-east-1
+      S3_CREATE_BUCKET: "1"
+      ESL_API_URL: http://api:8091
+      ESL_ACTOR: dagster
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+      - minio

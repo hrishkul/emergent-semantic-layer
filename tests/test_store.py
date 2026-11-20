@@ -24,9 +24,14 @@ def test_s3_store_roundtrip() -> None:
             access_key="testing",
             secret_key="testing",
         )
-        store.ensure_bucket()
+        with pytest.raises(RuntimeError, match="does not exist"):
+            store.ensure_bucket(create=False)
+        store.ensure_bucket(create=True)
+        store.ensure_bucket(create=False)
         uri = store.put("debate_spec/sales-ontology/abc", b"claim")
         assert uri == "s3://esl-artifacts/debate_spec/sales-ontology/abc"
+        assert store.get(uri) == b"claim"
+        store.put("debate_spec/sales-ontology/abc", b"ignored")
         assert store.get(uri) == b"claim"
     finally:
         server.stop()

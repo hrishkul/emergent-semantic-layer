@@ -150,3 +150,28 @@ def test_versions_increase_and_bytes_roundtrip(client) -> None:
     assert first.json()["version"] == 1
     assert second.json()["version"] == 2
     assert client.get(f"/artifacts/{second.json()['id']}/content").content == b"batch-2"
+
+
+def test_same_bytes_return_the_latest_version(client) -> None:
+    body = {
+        "kind": "source_extract",
+        "name": "erp-mtdd",
+        "created_by": "pipeline",
+        "content_json": {"extract_id": "abc"},
+    }
+    first = client.post("/artifacts", json=body)
+    again = client.post("/artifacts", json=body)
+    changed = client.post("/artifacts", json={**body, "content_json": {"extract_id": "def"}})
+    assert (first.status_code, first.json()["existing"]) == (201, False)
+    assert (again.status_code, again.json()["existing"]) == (200, True)
+    assert again.json()["id"] == first.json()["id"]
+    assert changed.json()["version"] == 2
+
+
+def test_source_profile_is_an_artifact_kind(client) -> None:
+    response = client.post(
+        "/artifacts",
+        json={"kind": "source_profile", "name": "erp-mtdd", "created_by": "pipeline",
+              "content_json": {"summary": {}}},
+    )
+    assert response.status_code == 201
