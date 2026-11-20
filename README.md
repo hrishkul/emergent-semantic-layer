@@ -64,6 +64,10 @@ ERP_MTDD_DIR=/path/to/the/kaggle/version .venv/bin/python -m esl.corpus index
 
 `GET /search?q=final+order+value` returns the same passages.
 
+## Milestone 3: debate
+
+`python -m esl.panel` runs one cross-vertical debate on `google/gemma-4-26b-a4b-it-maas`. Round 1 claims are isolated. Round 2 critiques the verbatim claim list. The judge writes an ontology proposal and does not approve it. With `ESL_API_URL` and `ESL_ACTOR` set, the transcript and the proposal are submitted for review. The run stops at 15 minutes or $8.
+
 ## API
 
 `POST /artifacts` stores a version, or returns the latest version with `existing: true` and status 200 when the bytes are unchanged. `kind` is `source_extract`, `source_profile`, `ontology`, `kpi_registry`, `cube_manifest`, `debate_transcript`, or `debate_spec`. A `debate_spec` must match the locked framework. An `ontology` must be the sales slice plus the shared foundation nodes, and a `kpi_registry` must name one measure per KPI. `GET /search` returns schema-workbook passages for a query.

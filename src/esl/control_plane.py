@@ -10,7 +10,15 @@ class ControlPlane:
         self.actor = actor
         self.timeout = timeout
 
-    def propose(self, *, kind: str, name: str, content: dict, summary: str) -> dict:
+    def propose(
+        self,
+        *,
+        kind: str,
+        name: str,
+        content: dict,
+        summary: str,
+        parent_artifact_id: str | None = None,
+    ) -> dict:
         """Store the content and open a proposal, unless it equals the latest version."""
         artifact = self._post(
             "/artifacts",
@@ -18,10 +26,14 @@ class ControlPlane:
         )
         if artifact.get("existing"):
             return {"artifact": artifact, "proposal": None}
-        proposal = self._post(
-            "/proposals",
-            {"artifact_id": artifact["id"], "summary": summary, "submitted_by": self.actor},
-        )
+        body = {
+            "artifact_id": artifact["id"],
+            "summary": summary,
+            "submitted_by": self.actor,
+        }
+        if parent_artifact_id:
+            body["parent_artifact_id"] = parent_artifact_id
+        proposal = self._post("/proposals", body)
         return {"artifact": artifact, "proposal": proposal}
 
     def _post(self, path: str, body: dict) -> dict:

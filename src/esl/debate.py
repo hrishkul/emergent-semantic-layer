@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 VERTICALS = ("sales", "finance", "inventory", "procurement", "production")
+CHOSEN_PROVIDER = "google"
+CHOSEN_MODEL_ID = "google/gemma-4-26b-a4b-it-maas"
 
 
 class DebateSpecError(Exception):
@@ -166,8 +168,13 @@ def enforce_framework(spec: DebateSpec) -> None:
         errors.append("model family must be open-weight")
     if participants.model.heterogeneity != "homogeneous":
         errors.append("one model for every role, so a miss is attributable to the protocol")
-    if participants.model.provider is not None or participants.model.model_id is not None:
-        errors.append("provider and model id stay empty until Phase 1")
+    provider, model_id = participants.model.provider, participants.model.model_id
+    empty_slot = provider is None and model_id is None
+    chosen = provider == CHOSEN_PROVIDER and model_id == CHOSEN_MODEL_ID
+    if not empty_slot and not chosen:
+        errors.append(
+            "model is the empty slot, or google / google/gemma-4-26b-a4b-it-maas"
+        )
     ids = [debater.id for debater in participants.debaters]
     if sorted(ids) != sorted(VERTICALS):
         errors.append(

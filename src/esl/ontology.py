@@ -94,9 +94,15 @@ def parse_ontology(data: bytes) -> Ontology:
     try:
         ontology = Ontology.model_validate(payload)
     except ValidationError as exc:
-        raise SchemaError([err["msg"] for err in exc.errors()]) from exc
+        raise SchemaError([_validation_message(err) for err in exc.errors()]) from exc
     enforce_ontology(ontology)
     return ontology
+
+
+def _validation_message(err: dict) -> str:
+    loc = ".".join(str(part) for part in err.get("loc") or ())
+    message = err["msg"]
+    return f"{loc}: {message}" if loc else message
 
 
 def enforce_ontology(ontology: Ontology) -> None:
