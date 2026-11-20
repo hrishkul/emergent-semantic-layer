@@ -45,11 +45,16 @@ The build now mirrors a production data platform on Google Cloud. This section s
 | Retrieval | Hybrid: **pgvector** plus BM25 in the control-plane Postgres. | No separate vector database. |
 | Evaluation and tracing | **Langfuse** for debate traces and evals, **OpenTelemetry** for the control plane. Gates in GitHub Actions: exception recall at least 0.70, stability at least 0.75 across 3 runs, 100% refusal on the adversarial question set (reported with its size and the false-refusal rate). | A gate is a target until a CI run passes it. |
 | Serving | **Cube** SQL API to Superset, plus a guardrailed **MCP server** that rejects invalid aggregations and anything outside approved measures. | Replaces the Phase 2b question layer with an MCP server. |
-| Infrastructure | **Terraform**: BigQuery, Compute Engine for the Dockerized FastAPI and Postgres control plane, Cloud Storage, Secret Manager, Artifact Registry. CI/CD in GitHub Actions. | Terraform arrives with milestone 8, not Phase 3. Vertex AI and Composer stay off. |
+| Infrastructure | **Terraform**: BigQuery, Compute Engine for the Dockerized FastAPI and Postgres control plane, Cloud Storage, Secret Manager, Artifact Registry. CI/CD in GitHub Actions. | Terraform arrives with milestone 8, not Phase 3. Composer stays off. The Vertex exception is the debate model below. |
+
+## Closed on 20 November 2026
+
+| Topic | Decision | Consequence for the build |
+| --- | --- | --- |
+| Debate model | **Gemma 4 26B A4B IT**, Vertex AI MaaS, model id `google/gemma-4-26b-a4b-it-maas`. One model for every role, including the summarizer and the judge. | Open-weight, and the call is the OpenAI chat-completions API at `https://aiplatform.googleapis.com/v1/projects/PROJECT/locations/global/endpoints/openapi/chat/completions`. Authentication is a Google access token, the same application-default credentials as BigQuery. Function calling is how the ReAct tools run. The checked-in debate spec keeps `provider` and `model_id` empty until milestone 3 submits a new `debate_spec` version. Composer, custom Vertex endpoints, and Gemini stay off. This is the only Vertex call. |
 
 ## Still open, and when it gets closed
 
 | Topic | Closes in |
 | --- | --- |
-| Which model vendor and which model id | Phase 1, before the first debate. The framework spec already has an empty slot |
 | Compute Engine machine size for the demo | Milestone 8. Local Compose is the development target until then |

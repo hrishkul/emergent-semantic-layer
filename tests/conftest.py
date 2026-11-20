@@ -9,6 +9,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 from esl.app import create_app
 from esl.db import apply_migrations
+from esl.retrieval import HashEmbedder
 from esl.settings import Settings
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://esl:esl@127.0.0.1:5432/esl")
@@ -23,7 +24,7 @@ def database_url() -> str:
 @pytest.fixture
 def client(database_url: str, tmp_path: Path) -> Iterator[TestClient]:
     with psycopg.connect(database_url) as conn:
-        conn.execute("TRUNCATE artifacts, proposals, approvals, runs CASCADE")
+        conn.execute("TRUNCATE artifacts, proposals, approvals, runs, passages CASCADE")
         conn.commit()
     exporter = InMemorySpanExporter()
     app = create_app(
@@ -33,6 +34,7 @@ def client(database_url: str, tmp_path: Path) -> Iterator[TestClient]:
             artifact_dir=tmp_path / "artifacts",
         ),
         exporter=exporter,
+        embedder=HashEmbedder(),
     )
     app.state.exporter = exporter
     with TestClient(app) as test_client:

@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "name": "erp-mtdd",
+  "slice": "sales",
+  "shared_foundation": true,
+  "nodes": [
+    {
+      "id": "legal_entity",
+      "name": "Legal entity",
+      "description": "The company that owns a transaction. Companies is the foundation master for multi-company tenancy.",
+      "grain": "one row per company",
+      "tables": [
+        {"name": "companies", "source_name": "Companies", "role": "authoritative"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Companies"},
+        {"sheet": "Column Dictionary", "locator": "Companies.Company_ID"}
+      ]
+    },
+    {
+      "id": "customer",
+      "name": "Customer",
+      "description": "A customer account that can place a quote or an order. Mastered in Sales.",
+      "grain": "one row per customer",
+      "tables": [
+        {"name": "customers", "source_name": "Customers", "role": "authoritative"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Customers"},
+        {"sheet": "Column Dictionary", "locator": "Customers.Customer_ID"}
+      ]
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "description": "An item that can be quoted, ordered, invoiced, and stocked. Mastered on Inventory Items.",
+      "grain": "one row per item",
+      "tables": [
+        {"name": "inventory_items", "source_name": "Inventory Items", "role": "authoritative"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Inventory Items"},
+        {"sheet": "Column Dictionary", "locator": "Inventory Items.Item_ID"}
+      ]
+    },
+    {
+      "id": "stock",
+      "name": "Stock",
+      "description": "Quantity on hand for an item in a warehouse bin. Stock moves on shipment and receipt, not when an order is booked.",
+      "grain": "one row per item at a warehouse bin",
+      "tables": [
+        {"name": "stock_levels", "source_name": "Stock Levels", "role": "authoritative"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Stock Levels"},
+        {"sheet": "Column Dictionary", "locator": "Stock Levels.Quantity_On_Hand"}
+      ]
+    },
+    {
+      "id": "quote",
+      "name": "Sales quote",
+      "description": "A quotation addressed to a customer. Quote-to-order is a sales fact, and it is not yet booked revenue.",
+      "grain": "one row per sales quote",
+      "tables": [
+        {"name": "sales_quotes", "source_name": "Sales Quotes", "role": "authoritative"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Sales Quotes"},
+        {"sheet": "Column Dictionary", "locator": "Sales Quotes.Total_Amount"}
+      ]
+    },
+    {
+      "id": "order",
+      "name": "Sales order",
+      "description": "A booked commitment to a customer. Final order value exists before an invoice.",
+      "grain": "one row per sales order",
+      "tables": [
+        {"name": "sales_orders", "source_name": "Sales Orders", "role": "authoritative"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Sales Orders"},
+        {"sheet": "Column Dictionary", "locator": "Sales Orders.Total_Amount"}
+      ]
+    },
+    {
+      "id": "order_line",
+      "name": "Sales order line",
+      "description": "One item on a sales order, with the quantity and the line amount.",
+      "grain": "one row per sales order line",
+      "tables": [
+        {"name": "sales_order_lines", "source_name": "Sales Order Lines", "role": "authoritative"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Sales Order Lines"},
+        {"sheet": "Column Dictionary", "locator": "Sales Order Lines.Line_Total"}
+      ]
+    },
+    {
+      "id": "invoice",
+      "name": "Customer invoice",
+      "description": "External invoiced revenue. Customer Invoices is the authoritative accounts-receivable document. The Sales Invoices table duplicates it.",
+      "grain": "one row per customer invoice",
+      "tables": [
+        {"name": "customer_invoices", "source_name": "Customer Invoices", "role": "authoritative"},
+        {"name": "invoices", "source_name": "Invoices", "role": "duplicate"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Customer Invoices"},
+        {"sheet": "Column Dictionary", "locator": "Invoices.Customer_Invoice_ID"},
+        {"sheet": "Relationships", "locator": "Invoices.Customer_Invoice_ID -> Customer Invoices.Customer_Invoice_ID"}
+      ]
+    },
+    {
+      "id": "invoice_line",
+      "name": "Customer invoice line",
+      "description": "One item on a customer invoice. Line total is quantity times unit price, less discount, plus tax.",
+      "grain": "one row per customer invoice line",
+      "tables": [
+        {"name": "customer_invoice_lines", "source_name": "Customer Invoice Lines", "role": "authoritative"}
+      ],
+      "documents": [
+        {"sheet": "Table Index", "locator": "Customer Invoice Lines"},
+        {"sheet": "Column Dictionary", "locator": "Customer Invoice Lines.Line_Total"}
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "customer_owned_by",
+      "source": "customer",
+      "target": "legal_entity",
+      "name": "owned_by",
+      "description": "Customers.Company_ID is the legal entity that owns the customer account.",
+      "column": "Company_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Customers.Company_ID -> Companies.Company_ID"}
+      ]
+    },
+    {
+      "id": "item_owned_by",
+      "source": "item",
+      "target": "legal_entity",
+      "name": "owned_by",
+      "description": "Inventory Items.Company_ID is the legal entity that owns the item.",
+      "column": "Company_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Inventory Items.Company_ID -> Companies.Company_ID"}
+      ]
+    },
+    {
+      "id": "stock_of_item",
+      "source": "stock",
+      "target": "item",
+      "name": "of_item",
+      "description": "Stock Levels.Item_ID is the item whose quantity is on hand.",
+      "column": "Item_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Stock Levels.Item_ID -> Inventory Items.Item_ID"}
+      ]
+    },
+    {
+      "id": "stock_owned_by",
+      "source": "stock",
+      "target": "legal_entity",
+      "name": "owned_by",
+      "description": "Stock Levels.Company_ID is the legal entity that holds the stock.",
+      "column": "Company_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Stock Levels.Company_ID -> Companies.Company_ID"}
+      ]
+    },
+    {
+      "id": "quote_addressed_to",
+      "source": "quote",
+      "target": "customer",
+      "name": "addressed_to",
+      "description": "Sales Quotes.Customer_ID is the customer the quote is addressed to.",
+      "column": "Customer_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Sales Quotes.Customer_ID -> Customers.Customer_ID"}
+      ]
+    },
+    {
+      "id": "quote_owned_by",
+      "source": "quote",
+      "target": "legal_entity",
+      "name": "owned_by",
+      "description": "Sales Quotes.Company_ID is the legal entity that issued the quote.",
+      "column": "Company_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Sales Quotes.Company_ID -> Companies.Company_ID"}
+      ]
+    },
+    {
+      "id": "order_placed_by",
+      "source": "order",
+      "target": "customer",
+      "name": "placed_by",
+      "description": "Sales Orders.Customer_ID is the customer placing the order.",
+      "column": "Customer_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Sales Orders.Customer_ID -> Customers.Customer_ID"}
+      ]
+    },
+    {
+      "id": "order_owned_by",
+      "source": "order",
+      "target": "legal_entity",
+      "name": "owned_by",
+      "description": "Sales Orders.Company_ID is the legal entity that books the order.",
+      "column": "Company_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Sales Orders.Company_ID -> Companies.Company_ID"}
+      ]
+    },
+    {
+      "id": "order_from_quote",
+      "source": "order",
+      "target": "quote",
+      "name": "from_quote",
+      "description": "Sales Orders.Quote_ID is the source quote when the order was converted.",
+      "column": "Quote_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Sales Orders.Quote_ID -> Sales Quotes.Sales_Quote_ID"}
+      ]
+    },
+    {
+      "id": "order_line_of_order",
+      "source": "order_line",
+      "target": "order",
+      "name": "of_order",
+      "description": "Sales Order Lines.Sales_Order_ID is the parent sales order.",
+      "column": "Sales_Order_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Sales Order Lines.Sales_Order_ID -> Sales Orders.Sales_Order_ID"}
+      ]
+    },
+    {
+      "id": "order_line_for_item",
+      "source": "order_line",
+      "target": "item",
+      "name": "for_item",
+      "description": "Sales Order Lines.Item_ID is the item being ordered.",
+      "column": "Item_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Sales Order Lines.Item_ID -> Inventory Items.Item_ID"}
+      ]
+    },
+    {
+      "id": "invoice_billed_to",
+      "source": "invoice",
+      "target": "customer",
+      "name": "billed_to",
+      "description": "Customer Invoices.Customer_ID is the customer being billed.",
+      "column": "Customer_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Customer Invoices.Customer_ID -> Customers.Customer_ID"}
+      ]
+    },
+    {
+      "id": "invoice_owned_by",
+      "source": "invoice",
+      "target": "legal_entity",
+      "name": "owned_by",
+      "description": "Customer Invoices.Company_ID is the legal entity that issues the invoice.",
+      "column": "Company_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Customer Invoices.Company_ID -> Companies.Company_ID"}
+      ]
+    },
+    {
+      "id": "invoice_for_order",
+      "source": "invoice",
+      "target": "order",
+      "name": "for_order",
+      "description": "Customer Invoices.Order_ID is the sales order this invoice bills.",
+      "column": "Order_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Customer Invoices.Order_ID -> Sales Orders.Sales_Order_ID"}
+      ]
+    },
+    {
+      "id": "invoice_line_of_invoice",
+      "source": "invoice_line",
+      "target": "invoice",
+      "name": "of_invoice",
+      "description": "Customer Invoice Lines.Customer_Invoice_ID is the parent accounts-receivable invoice.",
+      "column": "Customer_Invoice_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Customer Invoice Lines.Customer_Invoice_ID -> Customer Invoices.Customer_Invoice_ID"}
+      ]
+    },
+    {
+      "id": "invoice_line_for_item",
+      "source": "invoice_line",
+      "target": "item",
+      "name": "for_item",
+      "description": "Customer Invoice Lines.Item_ID is the item being invoiced.",
+      "column": "Item_ID",
+      "documents": [
+        {"sheet": "Relationships", "locator": "Customer Invoice Lines.Item_ID -> Inventory Items.Item_ID"}
+      ]
+    }
+  ]
+}

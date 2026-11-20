@@ -11,14 +11,14 @@ Phase 0 built the control plane: a versioned artifact store, a review queue, tra
 - The platform is Google Cloud: BigQuery, dbt, Dagster, Cube, Superset, an MCP server, LangGraph agents, Langfuse, and Terraform. See [plan/DECISIONS.md](plan/DECISIONS.md).
 - BI is Apache Superset in Phase 2. The SQL API stays something Power BI can also connect to.
 - The debate framework is locked in [plan/DEBATE_FRAMEWORK.md](plan/DEBATE_FRAMEWORK.md), from the taxonomy in [arXiv:2607.26212](https://arxiv.org/html/2607.26212v1). The document is [specs/ontology_debate.json](specs/ontology_debate.json).
-- The model vendor is still open. One open-weight model behind an OpenAI-compatible API, chosen in Phase 1.
+- The debate model is Gemma 4 26B A4B IT on Vertex AI MaaS, `google/gemma-4-26b-a4b-it-maas`, one model for every role. See [plan/DECISIONS.md](plan/DECISIONS.md).
 - The service map and console steps are in [plan/CLOUD.md](plan/CLOUD.md).
 
 The project license is the MIT license in the GitHub repository `hrishkul/emergent-semantic-layer`. That repository currently holds the license only.
 
 ## Run locally
 
-Postgres 16, then:
+Postgres 16 with the pgvector extension (`pgvector/pgvector:pg16` in Compose), then:
 
 ```bash
 python -m venv .venv
@@ -50,9 +50,23 @@ Without settings it writes to a local directory and skips BigQuery. Against Goog
 
 `dagster dev -m esl.pipeline.definitions` opens the Dagster UI. Compose runs the same UI on port 3000.
 
+## Milestone 2: ontology, KPI registry, document index
+
+`POST /artifacts` validates `ontology` and `kpi_registry` before storing them. The hand-written sales ontology and KPI registry are `specs/ontology_erp_mtdd.json` and `specs/kpi_registry_erp_mtdd.json`. Design: [plan/PHASE_1.md](plan/PHASE_1.md).
+
+The schema workbook is indexed in Postgres (pgvector plus BM25). Embeddings are local (`BAAI/bge-small-en-v1.5` via the `index` extra). The debate model is separate: `google/gemma-4-26b-a4b-it-maas`.
+
+```bash
+.venv/bin/pip install -e ".[index]"
+ERP_MTDD_DIR=/path/to/the/kaggle/version .venv/bin/python -m esl.corpus index
+.venv/bin/python -m esl.corpus search "final order value"
+```
+
+`GET /search?q=final+order+value` returns the same passages.
+
 ## API
 
-`POST /artifacts` stores a version, or returns the latest version with `existing: true` and status 200 when the bytes are unchanged. `kind` is `source_extract`, `source_profile`, `ontology`, `kpi_registry`, `cube_manifest`, `debate_transcript`, or `debate_spec`. A `debate_spec` must match the locked framework.
+`POST /artifacts` stores a version, or returns the latest version with `existing: true` and status 200 when the bytes are unchanged. `kind` is `source_extract`, `source_profile`, `ontology`, `kpi_registry`, `cube_manifest`, `debate_transcript`, or `debate_spec`. A `debate_spec` must match the locked framework. An `ontology` must be the sales slice plus the shared foundation nodes, and a `kpi_registry` must name one measure per KPI. `GET /search` returns schema-workbook passages for a query.
 
 `POST /proposals` opens a review. The only policy is `human_required`.
 

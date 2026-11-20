@@ -5,7 +5,7 @@ import os
 from typing import Literal
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace.export import SpanExporter
@@ -14,6 +14,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from esl.db import connect
 from esl.debate import DebateSpecError, parse_debate_spec
+from esl.kpi import parse_kpi_registry
+from esl.ontology import parse_ontology
 from esl.repository import (
     decide_proposal,
     get_artifact,
@@ -21,9 +23,17 @@ from esl.repository import (
     insert_proposal,
     list_proposals,
 )
+from esl.retrieval import CORPUS, Embedder, search_passages
+from esl.schema import SchemaError, canonical_json
 from esl.settings import Settings
 from esl.store import build_store
 from esl.telemetry import build_tracer
+
+JSON_PARSERS = {
+    "debate_spec": parse_debate_spec,
+    "ontology": parse_ontology,
+    "kpi_registry": parse_kpi_registry,
+}
 
 Kind = Literal[
     "source_extract",
@@ -81,6 +91,7 @@ class DecisionBody(BaseModel):
 def create_app(
     settings: Settings | None = None,
     exporter: SpanExporter | None = None,
+    embedder: Embedder | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if exporter is None and os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
@@ -89,6 +100,7 @@ def create_app(
     app.state.settings = settings
     app.state.store = build_store(settings)
     app.state.tracer = build_tracer(exporter)
+    app.state.embedder = embedder
 
     def get_conn(request: Request):
         conn = connect(request.app.state.settings.database_url)
@@ -118,21 +130,18 @@ def create_app(
             data = body.payload()
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-        if body.kind == "debate_spec":
+        parser = JSON_PARSERS.get(body.kind)
+        if parser is not None:
             try:
-                spec = parse_debate_spec(data)
-            except DebateSpecError as exc:
+                spec = parser(data)
+            except (DebateSpecError, SchemaError) as exc:
                 raise HTTPException(status_code=422, detail={"errors": exc.errors}) from exc
             if spec.name != body.name:
                 raise HTTPException(
                     status_code=422,
                     detail="artifact name must match the spec name",
                 )
-            data = json.dumps(
-                spec.model_dump(mode="json"),
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode()
+            data = canonical_json(spec)
         digest = hashlib.sha256(data).hexdigest()
         key = f"{body.kind}/{body.name}/{digest}"
         with request.app.state.tracer.start_as_current_span("artifact.put") as span:
@@ -168,8 +177,30 @@ def create_app(
             data = request.app.state.store.get(row["content_uri"])
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail="artifact bytes missing") from exc
-        media = "application/json" if row["kind"] == "debate_spec" else "application/octet-stream"
+        media = "application/json" if row["kind"] in JSON_PARSERS else "application/octet-stream"
         return Response(content=data, media_type=media)
+
+    @app.get("/search")
+    def search_documents(
+        request: Request,
+        conn=Depends(get_conn),
+        q: str = Query(min_length=1),
+        corpus: str = Query(default=CORPUS, pattern=r"^[a-z][a-z0-9_]{0,62}$"),
+        limit: int = Query(default=8, ge=1, le=20),
+    ):
+        embedder = request.app.state.embedder
+        if embedder is None:
+            try:
+                from esl.retrieval import FastEmbedder
+
+                embedder = FastEmbedder()
+            except RuntimeError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            request.app.state.embedder = embedder
+        try:
+            return search_passages(conn, corpus=corpus, query=q, embedder=embedder, limit=limit)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.post("/proposals", status_code=201)
     def create_proposal(body: CreateProposal, request: Request, conn=Depends(get_conn)):

@@ -1,12 +1,14 @@
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: esl
       POSTGRES_PASSWORD: esl
       POSTGRES_DB: esl
     ports:
       - "5432:5432"
+    volumes:
+      - esl-postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U esl -d esl"]
       interval: 5s
@@ -69,3 +71,6 @@ services:
     depends_on:
       - api
       - minio
+
+volumes:
+  esl-postgres:

@@ -25,3 +25,25 @@ The Dagster job `bronze_erp_mtdd` has four steps.
 When a control-plane URL is configured, the manifest is submitted as a `source_extract` artifact and the profile as a `source_profile` artifact, each with a `human_required` proposal.
 
 Bronze keeps values as the source holds them. Dates stay text. Silver casts with the column dictionary types.
+
+## Milestone 2 design
+
+The ontology and the KPI registry are JSON artifacts. The API rejects a document that does not match, the same way it rejects a debate spec. There is no graph database. The hand-written sales ontology is `specs/ontology_erp_mtdd.json`. The KPI registry is `specs/kpi_registry_erp_mtdd.json`.
+
+An ontology has nodes and edges. Every node has one authoritative bronze table and at least one link into the schema workbook. A second table may be marked `duplicate`. An edge is a foreign key: `source` holds `column`, and `target` is the referenced node. The sales slice keeps the shared foundation nodes `customer`, `item`, `legal_entity`, `order`, `invoice`, and `stock`. The invoice node records what the column dictionary says: `customer_invoices` is the authoritative accounts-receivable document, and the sales `invoices` table duplicates it.
+
+A KPI names one node, one aggregation (`sum`, `count`, or `count_distinct`), and one measure column on a table of that node. The compiler that turns the measure into SQL is milestone 5.
+
+The document index is one passage per schema-workbook row, stored in the control-plane Postgres. The embedding is 384-dimensional, from the local model `BAAI/bge-small-en-v1.5`. BM25 ranks the same text. `GET /search` fuses the two rankings. The debate model is not called here.
+
+Passage locators are stable, so an ontology can cite them:
+
+| Sheet | Locator |
+| --- | --- |
+| Table Index, Dependency Register | table name |
+| Column Dictionary | `Table.Column` |
+| Relationships | `Child Table.Child Column -> Parent Table.Parent Key` |
+| Load Order | table name |
+| Complexity Rules | complexity label |
+
+`python -m esl.corpus index` reads the schema workbook and replaces the `erp_mtdd_schema` corpus. `python -m esl.corpus search "<query>"` prints the top passages.

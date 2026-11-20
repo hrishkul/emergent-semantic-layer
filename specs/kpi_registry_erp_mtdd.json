@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "name": "erp-mtdd",
+  "ontology_name": "erp-mtdd",
+  "kpis": [
+    {
+      "id": "booked_value",
+      "name": "Booked value",
+      "description": "Final order value on the sales order. It exists when the order is booked, before an invoice.",
+      "node": "order",
+      "aggregation": "sum",
+      "measure": {"table": "sales_orders", "column": "Total_Amount"},
+      "grain": "one sales order",
+      "documents": [
+        {"sheet": "Column Dictionary", "locator": "Sales Orders.Total_Amount"}
+      ]
+    },
+    {
+      "id": "invoiced_revenue",
+      "name": "Invoiced revenue",
+      "description": "Line amount on the accounts-receivable invoice. This is external invoiced revenue, not booked value.",
+      "node": "invoice_line",
+      "aggregation": "sum",
+      "measure": {"table": "customer_invoice_lines", "column": "Line_Total"},
+      "grain": "one customer invoice line",
+      "documents": [
+        {"sheet": "Column Dictionary", "locator": "Customer Invoice Lines.Line_Total"}
+      ]
+    },
+    {
+      "id": "quoted_value",
+      "name": "Quoted value",
+      "description": "Final quote value. A quote is not a booked order and not an invoice.",
+      "node": "quote",
+      "aggregation": "sum",
+      "measure": {"table": "sales_quotes", "column": "Total_Amount"},
+      "grain": "one sales quote",
+      "documents": [
+        {"sheet": "Column Dictionary", "locator": "Sales Quotes.Total_Amount"}
+      ]
+    }
+  ]
+}
